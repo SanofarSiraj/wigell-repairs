@@ -39,21 +39,21 @@ public class RepairService {
         return serviceRepo.findAll();
     }
 
-    public List<com.wigell.wigell_repairs.entity.Technician> listTechnicians() {
+    public List<Technician> listTechnicians() {
         return technicianRepo.findAll();
     }
 
     @Transactional
-    public com.wigell.wigell_repairs.entity.Technician addTechnician(String name, String expertise) {
-        com.wigell.wigell_repairs.entity.Technician t = new com.wigell.wigell_repairs.entity.Technician(name, expertise);
-        com.wigell.wigell_repairs.entity.Technician saved = technicianRepo.save(t);
+    public Technician addTechnician(String name, String expertise) {
+        Technician t = new Technician(name, expertise);
+        Technician saved = technicianRepo.save(t);
         logger.info("admin added technician {} (expertise={})", name, expertise);
         return saved;
     }
 
     @Transactional
     public RepairServiceEntity addService(AddServiceRequest req) {
-        com.wigell.wigell_repairs.entity.Technician tech = technicianRepo.findById(req.getTechnicianId())
+        Technician tech = technicianRepo.findById(req.getTechnicianId())
                 .orElseThrow(() -> new IllegalArgumentException("Technician not found"));
         RepairServiceEntity s = new RepairServiceEntity(req.getName(), req.getType(), req.getPriceSek(), tech);
         RepairServiceEntity saved = serviceRepo.save(s);
@@ -67,7 +67,8 @@ public class RepairService {
         existing.setName(req.getName());
         existing.setType(req.getType());
         existing.setPriceSek(req.getPriceSek());
-        Technician tech = technicianRepo.findById(req.getTechnicianId()).orElseThrow(() -> new IllegalArgumentException("Technician not found"));
+        Technician tech = technicianRepo.findById(req.getTechnicianId())
+                .orElseThrow(() -> new IllegalArgumentException("Technician not found"));
         existing.setTechnician(tech);
         RepairServiceEntity updated = serviceRepo.save(existing);
         logger.info("admin updated service id={} name={}", updated.getId(), updated.getName());
@@ -82,7 +83,8 @@ public class RepairService {
 
     @Transactional
     public Booking bookService(BookingRequest req) {
-        RepairServiceEntity service = serviceRepo.findById(req.getServiceId()).orElseThrow(() -> new IllegalArgumentException("Service not found"));
+        RepairServiceEntity service = serviceRepo.findById(req.getServiceId())
+                .orElseThrow(() -> new IllegalArgumentException("Service not found"));
         BigDecimal priceSek = service.getPriceSek();
         BigDecimal priceEur = conversionService.sekToEur(priceSek);
         Booking booking = new Booking(req.getCustomerName(), service, req.getDate(), priceSek, priceEur);
@@ -96,8 +98,7 @@ public class RepairService {
     public Booking cancelBooking(Long bookingId) {
         Booking booking = bookingRepo.findById(bookingId).orElseThrow(() -> new IllegalArgumentException("Booking not found"));
         LocalDate now = LocalDate.now();
-        LocalDate lastAllowed = booking.getDate().minusDays(1); // up until 1 day before scheduled date allowed
-        if (now.isAfter(lastAllowed)) {
+        if (!now.isBefore(booking.getDate().minusDays(1))) {
             throw new IllegalStateException("Cannot cancel booking within 1 day of scheduled date");
         }
         booking.setCanceled(true);
@@ -117,3 +118,4 @@ public class RepairService {
 
     public List<Booking> listPast() { return bookingRepo.findByDateBeforeAndCanceledFalse(LocalDate.now()); }
 }
+
