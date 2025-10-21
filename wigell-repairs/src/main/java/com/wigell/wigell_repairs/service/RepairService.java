@@ -118,3 +118,4 @@ public class RepairService {
 
     public List<Booking> listPast() { return bookingRepo.findByDateBeforeAndCanceledFalse(LocalDate.now()); }
 }
+
