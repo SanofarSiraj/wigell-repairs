@@ -81,6 +81,11 @@ public class RepairService {
         logger.info("admin removed service id={}", id);
     }
 
+    public Booking getBookingById(Long id) {
+        return bookingRepo.findById(id).orElse(null);
+    }
+
+
     @Transactional
     public Booking bookService(BookingRequest req) {
         RepairServiceEntity service = serviceRepo.findById(req.getServiceId())
@@ -118,4 +123,6 @@ public class RepairService {
 
     public List<Booking> listPast() { return bookingRepo.findByDateBeforeAndCanceledFalse(LocalDate.now()); }
 }
+
+
 
