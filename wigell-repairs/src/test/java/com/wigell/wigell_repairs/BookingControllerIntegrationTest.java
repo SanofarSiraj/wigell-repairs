@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -24,7 +25,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// full context test with H2 (test profile)
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -42,8 +42,6 @@ class BookingControllerIntegrationTest {
     @Autowired
     private ObjectMapper mapper;
 
-    private String userAuth = "user1:password";
-
     @BeforeEach
     void setUp() {
         technicianRepository.deleteAll();
@@ -58,12 +56,13 @@ class BookingControllerIntegrationTest {
         req.setPriceSek(BigDecimal.valueOf(1000));
         req.setTechnicianId(t.getId());
 
-        // add via repository for simplicity
-        var entity = new com.wigell.wigell_repairs.entity.RepairServiceEntity(req.getName(), req.getType(), req.getPriceSek(), t);
+        var entity = new com.wigell.wigell_repairs.entity.RepairServiceEntity(
+                req.getName(), req.getType(), req.getPriceSek(), t);
         repairServiceRepository.save(entity);
     }
 
     @Test
+    @WithMockUser(username = "user1", roles = "USER")
     void book_and_get_bookings_as_user() throws Exception {
         var services = repairServiceRepository.findAll();
         Long serviceId = services.get(0).getId();
@@ -75,15 +74,13 @@ class BookingControllerIntegrationTest {
 
         mockMvc.perform(post("/api/wigellrepairs/bookservice")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(mapper.writeValueAsString(br))
-                        .header("Authorization", "Basic " + java.util.Base64.getEncoder().encodeToString(userAuth.getBytes())))
+                        .content(mapper.writeValueAsString(br)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.customerName").value("user1"))
                 .andExpect(jsonPath("$.service.name").value("Integration Service"));
 
         mockMvc.perform(get("/api/wigellrepairs/mybookings")
-                        .param("customerName", "user1")
-                        .header("Authorization", "Basic " + java.util.Base64.getEncoder().encodeToString(userAuth.getBytes())))
+                        .param("customerName", "user1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].customerName").value("user1"));
     }
